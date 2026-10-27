@@ -1,0 +1,21 @@
+import { Bell, BellOff, RefreshCw, Star } from 'lucide-react';
+import { useState } from 'react';
+import { useMock } from '../context';
+import { sampleTime, stocks, money, type Connection } from '../mocks/data';
+import { Badge, Button, Change, EmptyState, Notice, Panel, SearchField, StockIdentity, TableWrap, Tabs, ViewStateContent } from '../components/ui';
+import { Sparkline } from '../components/charts';
+
+export default function Market(){
+  const {view,setView,watched,subscribed,toggleWatch,toggleSubscribe,trade,connection,setConnection,notify}=useMock();
+  const [query,setQuery]=useState('');const [tab,setTab]=useState('all');
+  const filtered=stocks.filter(s=>(s.name.toLowerCase().includes(query.toLowerCase())||s.code.includes(query))&&(tab==='all'||(tab==='watch'?watched:subscribed).includes(s.code)));
+  return <>
+    <div className="page-heading"><div><div className="eyebrow">MARKET WATCH</div><h1>시세 · 관심종목</h1><p>관심 있는 종목을 모으고, 시세 구독을 관리하세요.</p></div><label className="inline-select">연결 상태 예시<select aria-label="시세 연결 상태 예시" value={connection} onChange={e=>setConnection(e.target.value as Connection)}><option value="connected">연결 정상</option><option value="recovering">재연결 중</option><option value="stale">시세 지연</option></select></label></div>
+    {connection==='connected'?<Notice tone="success"><strong>시세 연결 정상</strong><span className="notice-description">예시 시세 기준 {sampleTime} · 실제 실시간 데이터가 아닙니다.</span></Notice>:<Notice tone="warning" action={<Button size="sm" onClick={()=>{setConnection('connected');notify('구독 복원과 최신 상태 확인을 마친 예시예요.');}} icon={<RefreshCw size={14}/>}>다시 연결</Button>}><strong>{connection==='recovering'?'시세를 다시 연결하고 있어요':'최근 시세 갱신을 확인하지 못했어요'}</strong><span className="notice-description">표시된 가격이 최신이 아닐 수 있어요. 연결 후 구독 상태와 최신 시세를 다시 확인합니다.</span></Notice>}
+    <div className="market-summary"><div><span className="status-dot"/><span>구독 중</span><strong>{subscribed.length}종목</strong></div><div><Star size={15}/><span>관심종목</span><strong>{watched.length}종목</strong></div><div><span>기준 시각</span><strong>14:32:06</strong></div><Badge>예시 데이터</Badge></div>
+    <Panel className="market-panel"><div className="table-toolbar"><Tabs value={tab} onChange={setTab} items={[{value:'all',label:'전체 종목',count:stocks.length},{value:'watch',label:'관심종목',count:watched.length},{value:'subscribed',label:'구독 중',count:subscribed.length}]}/><SearchField value={query} onChange={setQuery}/></div>
+      <ViewStateContent state={view} onRetry={()=>setView('normal')}>
+      {filtered.length?<TableWrap><table className="data-table market-table"><thead><tr><th><span className="sr-only">관심종목 설정</span></th><th>종목</th><th className="number">현재가</th><th className="number">등락률</th><th className="number">거래량</th><th>가격 추이</th><th>시세 구독</th><th><span className="sr-only">주문</span></th></tr></thead><tbody>{filtered.map(stock=><tr key={stock.code}><td className="star-cell"><button className={`icon-button star-button ${watched.includes(stock.code)?'active':''}`} aria-label={`${stock.name} 관심종목 ${watched.includes(stock.code)?'해제':'추가'}`} aria-pressed={watched.includes(stock.code)} onClick={()=>toggleWatch(stock.code)}><Star size={17} fill={watched.includes(stock.code)?'currentColor':'none'}/></button></td><td><StockIdentity stock={stock}/></td><td className="number emphasis">{money(stock.price)}원</td><td className="number"><Change value={stock.change}/></td><td className="number dim">{stock.volume}주</td><td><Sparkline series={stock.series} negative={stock.change<0}/></td><td><Button size="sm" variant={subscribed.includes(stock.code)?'secondary':'ghost'} icon={subscribed.includes(stock.code)?<Bell size={14}/>:<BellOff size={14}/>} onClick={()=>toggleSubscribe(stock.code)} aria-pressed={subscribed.includes(stock.code)}>{subscribed.includes(stock.code)?'구독 중':'구독하기'}</Button></td><td><Button size="sm" onClick={()=>trade(stock.code)}>주문</Button></td></tr>)}</tbody></table></TableWrap>:<EmptyState title={query?'찾는 종목이 없어요':'아직 선택한 종목이 없어요'} description={query?'종목명이나 종목코드를 다시 확인해 주세요.':'전체 종목에서 관심종목이나 구독할 종목을 선택해 주세요.'} action={<Button onClick={()=>{setQuery('');setTab('all');}}>전체 종목 보기</Button>}/>}</ViewStateContent>
+    </Panel><p className="footnote">종목명과 코드는 화면 구성을 위한 예시입니다. 가격, 등락률, 거래량은 목 데이터예요.</p>
+  </>;
+}
