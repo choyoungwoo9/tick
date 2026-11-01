@@ -2,6 +2,7 @@ package com.youngwoo.tick.account.domain
 
 import com.youngwoo.tick.TickException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.math.BigInteger
@@ -68,5 +69,22 @@ class AccountTest {
         assertThrows<TickException> {
             account.withdraw(minusAmount)
         }
+    }
+
+    @Test
+    fun `계좌의 입출금 내역을 확인할 수 있다`(){
+        val account = Account(accountId, ownerId)
+        account.deposit(30000.toBigInteger())
+        account.withdraw(20000.toBigInteger())
+        val transactions = account.transactions
+
+        assertEquals(2, transactions.size)
+        assertTrue(transactions.any {
+            TransactionType.DEPOSIT == it.type && 30000.toBigInteger() == it.amount
+        })
+
+        assertTrue(transactions.any {
+            TransactionType.WITHDRAW == it.type && 20000.toBigInteger() == it.amount
+        })
     }
 }
