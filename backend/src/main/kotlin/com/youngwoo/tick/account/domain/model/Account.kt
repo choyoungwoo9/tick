@@ -1,4 +1,4 @@
-package com.youngwoo.tick.account.domain
+package com.youngwoo.tick.account.domain.model
 
 import com.youngwoo.tick.TickException
 import java.math.BigInteger
