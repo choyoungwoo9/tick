@@ -8,7 +8,7 @@ class AccountService(
     private val accountRepository: AccountRepository
 ) {
     fun openAccount(ownerId: Long): Long {
-        val account = Account(0, ownerId)
+        val account = Account(ownerId)
         accountRepository.save(account)
         return account.id
     }

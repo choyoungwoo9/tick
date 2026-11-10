@@ -4,7 +4,8 @@ import com.youngwoo.tick.TickException
 import java.math.BigInteger
 import java.time.LocalDateTime
 
-class Account(val id: Long, private val ownerId: Long) {
+class Account(private val ownerId: Long) {
+    var id: Long = 0
     var balance: BigInteger = BigInteger.ZERO
         private set
     private val _transactions: MutableList<AccountTransaction> = mutableListOf()

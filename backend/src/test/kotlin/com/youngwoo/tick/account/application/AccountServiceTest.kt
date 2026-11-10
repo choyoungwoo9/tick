@@ -15,7 +15,7 @@ class AccountServiceTest {
 
     @Test
     fun `계좌를 개설할 수 있다`(){
-        val savedAccount = Account(1L, ownerId)
+        val savedAccount = Account(ownerId)
 
         every {
             accountRepository.save(any())
