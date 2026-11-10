@@ -12,11 +12,13 @@ class AccountServiceTest {
     private val accountService = AccountService(accountRepository)
 
     private val ownerId = 1L
+    private val accountId = 1L
+    private val savedAccount = Account(ownerId).apply{
+        this.id = accountId
+    }
 
     @Test
     fun `계좌를 개설할 수 있다`(){
-        val savedAccount = Account(ownerId)
-
         every {
             accountRepository.save(any())
         } returns savedAccount
@@ -26,7 +28,7 @@ class AccountServiceTest {
         } returns savedAccount
 
         val accountId = accountService.openAccount(ownerId)
-        assertEquals(accountId, 0)
+        assertEquals(accountId, 1L)
 
         val balance = accountService.getBalance(accountId, ownerId)
         assertEquals(balance, 0.toBigInteger())
@@ -34,7 +36,21 @@ class AccountServiceTest {
 
     @Test
     fun `계좌에 입출금을 할 수 있다`(){
+        every {
+            accountRepository.findByIdAndOwnerId(accountId, ownerId)
+        } returns savedAccount
 
+        every {
+            accountRepository.save(savedAccount)
+        } returns savedAccount
+
+        accountService.deposit(accountId, ownerId, 1000.toBigInteger())
+        var balance = accountService.getBalance(accountId, ownerId)
+        assertEquals(balance, 1000.toBigInteger())
+
+        accountService.withdraw(accountId, ownerId, 500.toBigInteger())
+        balance = accountService.getBalance(accountId, ownerId)
+        assertEquals(balance, 500.toBigInteger())
     }
 
     @Test

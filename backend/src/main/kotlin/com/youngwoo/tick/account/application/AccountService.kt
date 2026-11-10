@@ -9,11 +9,24 @@ class AccountService(
 ) {
     fun openAccount(ownerId: Long): Long {
         val account = Account(ownerId)
-        accountRepository.save(account)
-        return account.id
+        val savedAccount = accountRepository.save(account)
+        return savedAccount.id
     }
-    fun getBalance(id: Long, ownerId: Long): BigInteger {
-        val account = accountRepository.findByIdAndOwnerId(id, ownerId)
+
+    fun getBalance(accountId: Long, ownerId: Long): BigInteger {
+        val account = accountRepository.findByIdAndOwnerId(accountId, ownerId)
         return account.balance
+    }
+
+    fun deposit(accountId: Long, ownerId: Long, amount: BigInteger) {
+        val account = accountRepository.findByIdAndOwnerId(accountId, ownerId)
+        account.deposit(amount)
+        accountRepository.save(account)
+    }
+
+    fun withdraw(accountId: Long, ownerId: Long, amount: BigInteger) {
+        val account = accountRepository.findByIdAndOwnerId(accountId, ownerId)
+        account.withdraw(amount)
+        accountRepository.save(account)
     }
 }
