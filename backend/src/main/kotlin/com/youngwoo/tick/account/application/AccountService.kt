@@ -1,6 +1,7 @@
 package com.youngwoo.tick.account.application
 
 import com.youngwoo.tick.account.domain.model.Account
+import com.youngwoo.tick.account.domain.model.AccountTransaction
 import com.youngwoo.tick.account.domain.repository.AccountRepository
 import java.math.BigInteger
 
@@ -28,5 +29,10 @@ class AccountService(
         val account = accountRepository.findByIdAndOwnerId(accountId, ownerId)
         account.withdraw(amount)
         accountRepository.save(account)
+    }
+
+    fun getTransactions(accountId: Long, ownerId: Long): List<AccountTransaction> {
+        val account = accountRepository.findByIdAndOwnerId(accountId, ownerId)
+        return account.transactions
     }
 }

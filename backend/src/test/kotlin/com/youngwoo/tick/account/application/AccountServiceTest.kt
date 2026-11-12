@@ -55,6 +55,18 @@ class AccountServiceTest {
 
     @Test
     fun `계좌의 입출금 이력을 조회할 수 있다`(){
+        savedAccount.deposit(1000.toBigInteger())
+        savedAccount.withdraw(500.toBigInteger())
+        val expected = savedAccount.transactions
 
+        every {
+            accountRepository.findByIdAndOwnerId(accountId, ownerId)
+        } returns savedAccount
+
+        val actual = accountService.getTransactions(accountId, ownerId)
+        assertEquals(
+            expected.groupingBy{it}.eachCount(),
+            actual.groupingBy{it}.eachCount()
+        )
     }
 }
