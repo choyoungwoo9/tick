@@ -60,12 +60,15 @@ class AccountApiTest @Autowired constructor(
 
         postTransaction(accountId, "DEPOSIT", "500")
             .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.transactionId").isNumber)
             .andExpect(jsonPath("$.type").value("DEPOSIT"))
             .andExpect(jsonPath("$.amount").value("500"))
+            .andExpect(jsonPath("$.balanceAfter").value("500"))
 
         postTransaction(accountId, "WITHDRAW", "200")
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.type").value("WITHDRAW"))
+            .andExpect(jsonPath("$.balanceAfter").value("300"))
 
         mockMvc.perform(
             get("/accounts/{accountId}", accountId)
@@ -79,10 +82,14 @@ class AccountApiTest @Autowired constructor(
                 .header("X-Owner-Id", 1L)
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].transactionId").isNumber)
             .andExpect(jsonPath("$[0].type").value("DEPOSIT"))
             .andExpect(jsonPath("$[0].amount").value("500"))
+            .andExpect(jsonPath("$[0].balanceAfter").value("500"))
             .andExpect(jsonPath("$[1].type").value("WITHDRAW"))
+            .andExpect(jsonPath("$[1].transactionId").isNumber)
             .andExpect(jsonPath("$[1].amount").value("200"))
+            .andExpect(jsonPath("$[1].balanceAfter").value("300"))
     }
 
     @Test

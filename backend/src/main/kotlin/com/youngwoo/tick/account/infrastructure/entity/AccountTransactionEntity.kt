@@ -31,8 +31,12 @@ open class AccountTransactionEntity(
     @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     open var id: Long? = null
 
-    fun domain(): AccountTransaction =
-        AccountTransaction(TransactionType.valueOf(type), amount.toBigInteger(), transactedAt)
+    fun domain(): AccountTransaction = AccountTransaction(
+        type = TransactionType.valueOf(type),
+        amount = amount.toBigInteger(),
+        transactedAt = transactedAt,
+        id = id
+    )
 
     companion object {
         fun from(transaction: AccountTransaction, account: AccountEntity): AccountTransactionEntity =

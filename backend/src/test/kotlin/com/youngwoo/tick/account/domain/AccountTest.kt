@@ -80,6 +80,8 @@ class AccountTest {
         val transactions = account.transactions
 
         assertEquals(2, transactions.size)
+        assertEquals(30000.toBigInteger(), transactions[0].balanceAfter)
+        assertEquals(10000.toBigInteger(), transactions[1].balanceAfter)
         assertTrue(transactions.any {
             TransactionType.DEPOSIT == it.type && 30000.toBigInteger() == it.amount
         })

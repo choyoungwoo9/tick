@@ -37,7 +37,8 @@ class Account(
             AccountTransaction(
                 TransactionType.DEPOSIT,
                 amount,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                balanceAfter = balance
             ))
     }
 
@@ -51,7 +52,8 @@ class Account(
             AccountTransaction(
                 TransactionType.WITHDRAW,
                 amount,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                balanceAfter = balance
             ))
     }
 

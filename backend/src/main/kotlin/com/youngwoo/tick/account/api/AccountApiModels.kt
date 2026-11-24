@@ -50,14 +50,20 @@ data class CreateTransactionRequest(
 )
 
 data class TransactionResponse(
+    val transactionId: Long,
     val type: TransactionType,
     val amount: String,
+    val balanceAfter: String,
     val transactedAt: LocalDateTime
 ) {
     companion object {
         fun from(transaction: AccountTransaction): TransactionResponse = TransactionResponse(
+            transactionId = transaction.id
+                ?: throw IllegalStateException("저장된 거래에는 ID가 필요합니다."),
             type = transaction.type,
             amount = transaction.amount.toString(),
+            balanceAfter = transaction.balanceAfter?.toString()
+                ?: throw IllegalStateException("저장된 거래에는 거래 후 잔고가 필요합니다."),
             transactedAt = transaction.transactedAt
         )
     }

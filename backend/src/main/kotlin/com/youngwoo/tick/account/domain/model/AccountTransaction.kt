@@ -6,7 +6,9 @@ import java.time.LocalDateTime
 data class AccountTransaction(
     val type: TransactionType,
     val amount: BigInteger,
-    val transactedAt: LocalDateTime
+    val transactedAt: LocalDateTime,
+    val id: Long? = null,
+    val balanceAfter: BigInteger? = null
 )
 
 enum class TransactionType {

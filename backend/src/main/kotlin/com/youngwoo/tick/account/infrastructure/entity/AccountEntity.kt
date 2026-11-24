@@ -3,6 +3,7 @@ package com.youngwoo.tick.account.infrastructure.entity
 import com.youngwoo.tick.account.domain.model.Account
 import com.youngwoo.tick.account.domain.model.AccountSummary
 import com.youngwoo.tick.account.domain.model.AccountTransaction
+import com.youngwoo.tick.account.domain.model.TransactionType
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -12,6 +13,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.OrderBy
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import java.math.BigInteger
 import java.time.LocalDateTime
 
 @Entity
@@ -42,8 +44,16 @@ open class AccountEntity(
     }
 
     fun domain(): Account {
-        val transactions = this.transactions.map {
+        val domainTransactions = this.transactions.map {
             it.domain()
+        }
+        val netChange = domainTransactions.fold(BigInteger.ZERO) { total, transaction ->
+            total + signedAmount(transaction)
+        }
+        var transactionBalance = balance.toBigInteger() - netChange
+        val transactions = domainTransactions.map { transaction ->
+            transactionBalance += signedAmount(transaction)
+            transaction.copy(balanceAfter = transactionBalance)
         }.toMutableList()
         return Account.restore(
             id = id ?: 0L,
@@ -55,6 +65,9 @@ open class AccountEntity(
             transactions = transactions
         )
     }
+
+    private fun signedAmount(transaction: AccountTransaction): BigInteger =
+        if (transaction.type == TransactionType.DEPOSIT) transaction.amount else transaction.amount.negate()
 
     fun summary(): AccountSummary = AccountSummary(
         id = id ?: 0L,
