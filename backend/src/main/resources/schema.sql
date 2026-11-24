@@ -1,8 +1,12 @@
 CREATE TABLE accounts (
     id BIGINT NOT NULL AUTO_INCREMENT,
     owner_id BIGINT NOT NULL,
+    name VARCHAR(24) NOT NULL,
+    account_number VARCHAR(32) NULL,
+    opened_at DATETIME(6) NOT NULL,
     balance LONGTEXT NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_accounts_account_number UNIQUE (account_number)
 );
 
 CREATE TABLE account_transactions (

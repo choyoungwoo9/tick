@@ -1,6 +1,7 @@
 package com.youngwoo.tick.account.infrastructure.entity
 
 import com.youngwoo.tick.account.domain.model.Account
+import com.youngwoo.tick.account.domain.model.AccountSummary
 import com.youngwoo.tick.account.domain.model.AccountTransaction
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -11,12 +12,19 @@ import jakarta.persistence.Id
 import jakarta.persistence.OrderBy
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "accounts")
 open class AccountEntity(
     @field:Column(name = "owner_id", nullable = false)
-    open var ownerId: Long
+    open var ownerId: Long,
+    @field:Column(name = "name", nullable = false, length = 24)
+    open var name: String,
+    @field:Column(name = "account_number", unique = true, length = 32)
+    open var accountNumber: String? = null,
+    @field:Column(name = "opened_at", nullable = false)
+    open var openedAt: LocalDateTime = LocalDateTime.now()
 ) {
     @field:Id
     @field:GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,11 +45,34 @@ open class AccountEntity(
         val transactions = this.transactions.map {
             it.domain()
         }.toMutableList()
-        return Account.restore(id ?: 0L, ownerId, balance.toBigInteger(), transactions)
+        return Account.restore(
+            id = id ?: 0L,
+            ownerId = ownerId,
+            name = name,
+            accountNumber = accountNumber,
+            openedAt = openedAt,
+            balance = balance.toBigInteger(),
+            transactions = transactions
+        )
     }
 
+    fun summary(): AccountSummary = AccountSummary(
+        id = id ?: 0L,
+        ownerId = ownerId,
+        name = name,
+        accountNumber = accountNumber
+            ?: throw IllegalStateException("저장된 계좌에 번호가 없습니다."),
+        balance = balance.toBigInteger(),
+        openedAt = openedAt
+    )
+
     companion object {
-        fun from(account: Account): AccountEntity = AccountEntity(account.ownerId).apply {
+        fun from(account: Account): AccountEntity = AccountEntity(
+            ownerId = account.ownerId,
+            name = account.name,
+            accountNumber = account.accountNumber,
+            openedAt = account.openedAt
+        ).apply {
             id = account.id.takeIf { it != 0L }
             balance = account.balance.toString()
         }

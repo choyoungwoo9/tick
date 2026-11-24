@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface AccountJpaRepository : JpaRepository<AccountEntity, Long> {
     @EntityGraph(attributePaths = ["transactions"])
     fun findByIdAndOwnerId(id: Long, ownerId: Long): AccountEntity?
+
+    fun findAllByOwnerIdOrderByIdAsc(ownerId: Long): List<AccountEntity>
 }

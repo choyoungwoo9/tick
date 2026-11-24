@@ -27,7 +27,7 @@ class AccountServiceTest {
             accountRepository.findByIdAndOwnerId(any(), any())
         } returns savedAccount
 
-        val accountId = accountService.openAccount(ownerId)
+        val accountId = accountService.openAccount(ownerId).id
         assertEquals(accountId, 1L)
 
         val balance = accountService.getBalance(accountId, ownerId)
