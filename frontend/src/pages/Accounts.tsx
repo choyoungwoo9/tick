@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, FlaskConical, Landmark, Plus, Wallet, XCircle } from 'lucide-react';
 import { useBanking } from '../banking-context';
 import { money } from '../mocks/data';
-import { transferProblem, type TransferKind } from '../mocks/banking';
-import { Badge, Button, EmptyState, Modal, Notice, Panel, Stat, TableWrap, Tabs } from '../components/ui';
+import { transferProblem, type TransferKind } from '../banking-model';
+import { Badge, Button, EmptyState, InlineLoading, Modal, Notice, Panel, Stat, TableWrap, Tabs } from '../components/ui';
 import './accounts.css';
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('sv-SE', {
@@ -14,7 +14,7 @@ const amountValue = (value: string) => /^\d+$/.test(value) ? Number(value) : NaN
 const kindLabel = (kind: TransferKind) => kind === 'deposit' ? '입금' : '출금';
 
 export default function Accounts() {
-  const { state, openAccount, selectAccount, transfer, requestTwoWithdrawals } = useBanking();
+  const { state, loading, accountLoading, error: apiError, reload, openAccount, selectAccount, transfer, requestTwoWithdrawals } = useBanking();
   const account = state.accounts.find(item => item.id === state.selectedId);
   const [modal, setModal] = useState<'open' | 'confirm' | 'result' | null>(null);
   const [name, setName] = useState('');
@@ -28,6 +28,7 @@ export default function Accounts() {
   const [batchAmount, setBatchAmount] = useState('700000');
   const [batchError, setBatchError] = useState('');
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const historyRef = useRef<HTMLElement>(null);
   const batchRef = useRef<HTMLDetailsElement>(null);
 
@@ -42,10 +43,17 @@ export default function Accounts() {
   const transactions = account?.transactions.filter(item => filter === 'all' || item.kind === filter) ?? [];
 
   const showOpen = () => { setName(`나의 모의계좌 ${state.accounts.length + 1}`); setNameError(''); setModal('open'); };
-  const submitOpen = (event: FormEvent) => {
+  const submitOpen = async (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim() || name.trim().length > 24) { setNameError('계좌 이름을 1~24자로 입력해 주세요.'); return; }
-    openAccount(name.trim()); setModal(null); setKind('deposit');
+    setBusy(true);
+    try {
+      await openAccount(name.trim()); setModal(null); setKind('deposit');
+    } catch (openError) {
+      setNameError(openError instanceof Error ? openError.message : '계좌를 개설하지 못했어요.');
+    } finally {
+      setBusy(false);
+    }
   };
   const submitTransfer = (event: FormEvent) => {
     event.preventDefault();
@@ -54,46 +62,61 @@ export default function Accounts() {
     if (problem) { setError(problem); return; }
     setError(''); setDraft({ accountId: account!.id, kind, amount: value }); setModal('confirm');
   };
-  const confirmTransfer = () => {
+  const confirmTransfer = async () => {
     if (!draft) return;
-    setReceiptId(transfer(draft.accountId, draft.kind, draft.amount)); setModal('result');
+    setBusy(true);
+    try {
+      setReceiptId(await transfer(draft.accountId, draft.kind, draft.amount)); setModal('result');
+    } catch {
+      setModal(null);
+    } finally {
+      setBusy(false);
+    }
   };
-  const submitBatch = (event: FormEvent) => {
+  const submitBatch = async (event: FormEvent) => {
     event.preventDefault();
     const value = amountValue(batchAmount);
     if (!account) return;
     if (!Number.isSafeInteger(value) || value <= 0) { setBatchError('요청당 출금 금액을 1원 이상의 정수로 입력해 주세요.'); return; }
-    setBatchError(''); setBatchId(requestTwoWithdrawals(account.id, value));
+    setBatchError(''); setBusy(true);
+    try {
+      setBatchId(await requestTwoWithdrawals(account.id, value));
+    } catch (batchRequestError) {
+      setBatchError(batchRequestError instanceof Error ? batchRequestError.message : '출금 요청을 처리하지 못했어요.');
+    } finally {
+      setBusy(false);
+    }
   };
   const beginDeposit = () => { setKind('deposit'); document.getElementById('cash-amount')?.focus(); };
 
   return <>
     <div className="page-heading">
       <div><div className="eyebrow">ACCOUNT MANAGEMENT</div><h1>계좌 관리</h1><p>모의 계좌를 개설하고 자금의 입출금과 잔고를 확인하세요.</p></div>
-      <Button variant="primary" icon={<Plus size={16} />} onClick={showOpen}>모의 계좌 개설</Button>
+      <Button variant="primary" icon={<Plus size={16} />} onClick={showOpen} disabled={busy}>{busy ? '처리 중...' : '모의 계좌 개설'}</Button>
     </div>
-    <Notice>여기서 개설한 계좌는 입출금용 모의 계좌예요. 기존 거래 화면의 예시 계좌와 별도로 관리되며, 새로고침하면 초기화됩니다.</Notice>
+    <Notice>계좌와 입출금 내역은 서버에 저장돼 새로고침 후에도 유지돼요. 기존 거래 화면의 예시 계좌와는 별도로 관리됩니다.</Notice>
+    {apiError && <Notice tone="warning" action={<Button onClick={() => void reload()}>다시 불러오기</Button>}>{apiError}</Notice>}
 
-    {!account ? <Panel>
+    {loading ? <Panel><EmptyState title="계좌를 불러오는 중이에요" description="서버에 저장된 계좌와 잔고를 확인하고 있어요." /></Panel> : !account ? <Panel>
       <div className="banking-welcome">
         <span className="banking-welcome-icon"><Landmark size={30} strokeWidth={1.5} /></span>
         <Badge tone="green">모의 계좌</Badge>
-        <h2>나의 모의 계좌를 개설해 보세요</h2>
-        <p>잔고 0원에서 시작해 원하는 금액을 입금하고,<br />출금 후 잔고와 입출금 내역을 확인할 수 있어요.</p>
-        <Button variant="primary" onClick={showOpen}>첫 모의 계좌 개설하기</Button>
+        <h2>{apiError ? '계좌 목록을 불러오지 못했어요' : '나의 모의 계좌를 개설해 보세요'}</h2>
+        <p>{apiError ? '서버 연결을 확인한 뒤 다시 시도해 주세요.' : <>잔고 0원에서 시작해 원하는 금액을 입금하고,<br />출금 후 잔고와 입출금 내역을 확인할 수 있어요.</>}</p>
+        {apiError ? <Button onClick={() => void reload()}>다시 불러오기</Button> : <Button variant="primary" onClick={showOpen}>첫 모의 계좌 개설하기</Button>}
       </div>
-      <div className="banking-steps">{[
+      {!apiError && <div className="banking-steps">{[
         ['01', '계좌 개설', '계좌 이름을 정하고 0원으로 시작해요.'],
         ['02', '모의 자금 입출금', '원하는 금액을 입금하거나 출금해요.'],
         ['03', '잔고와 내역 확인', '각 거래 이후 잔고를 확인해요.'],
-      ].map(([step, title, description]) => <div key={step}><span>{step}</span><strong>{title}</strong><p>{description}</p></div>)}</div>
+      ].map(([step, title, description]) => <div key={step}><span>{step}</span><strong>{title}</strong><p>{description}</p></div>)}</div>}
     </Panel> : <>
       <div className="banking-account-bar">
         <span className="banking-account-icon"><Landmark size={21} /></span>
         <label>선택 계좌<select aria-label="입출금 계좌 선택" value={account.id} onChange={event => selectAccount(event.target.value)}>
           {state.accounts.map(item => <option key={item.id} value={item.id}>{item.name} · {item.number}</option>)}
         </select></label>
-        <div className="banking-account-meta"><Badge tone="green">개설 완료</Badge><span>소유자 김틱 · {formatDate(account.openedAt)} 개설</span></div>
+        <div className="banking-account-meta"><Badge tone="green">개설 완료</Badge><span>소유자 김틱 · {formatDate(account.openedAt)} 개설</span>{accountLoading && <InlineLoading />}</div>
       </div>
       <div className="stats-grid banking-stats">
         <Stat label="현재 잔고" value={<>{money(account.balance)}<small>원</small></>} sub="선택 계좌의 모의 현금" icon={<Wallet size={16} />} />
@@ -115,7 +138,7 @@ export default function Accounts() {
             </div>
             {error && <p id="cash-amount-error" className="field-error" role="alert">{error}</p>}
             <div className="banking-balance-line"><span>현재 잔고</span><strong>{money(account.balance)}원</strong></div>
-            <Button type="submit" variant="primary" className="banking-submit">{kindLabel(kind)} 내용 확인</Button>
+            <Button type="submit" variant="primary" className="banking-submit" disabled={busy || accountLoading}>{kindLabel(kind)} 내용 확인</Button>
             <p className="helper-text">모의 자금의 증감만 반영해요. 실제 은행으로 돈이 이동하지 않으며, 주문 자산 예약과는 연결되어 있지 않아요.</p>
           </form>
         </Panel>
@@ -138,16 +161,16 @@ export default function Accounts() {
       </div>
 
       <details ref={batchRef} className="banking-batch">
-        <summary><span className="banking-batch-icon"><FlaskConical size={18} /></span><span><strong>동시 출금 요청 시나리오</strong><small>같은 계좌에 출금 두 건을 함께 요청하는 목 동작을 확인해요.</small></span><span className="banking-expand">펼치기</span></summary>
+        <summary><span className="banking-batch-icon"><FlaskConical size={18} /></span><span><strong>출금 두 건 요청 시나리오</strong><small>같은 계좌에 출금 두 건을 서버로 차례로 요청해요.</small></span><span className="banking-expand">펼치기</span></summary>
         <div className="banking-batch-body">
-          <Notice tone="warning">브라우저가 두 요청을 최신 잔고에 차례로 반영하는 시연입니다. 실제 병렬 요청·서버·DB의 동시성 보장을 검증하는 기능은 아니에요.</Notice>
+          <Notice tone="warning">서버에 두 번 순차 요청하는 시연입니다. 실제 병렬 요청이나 DB 동시성 보장을 검증하는 기능은 아니에요.</Notice>
           <p className="banking-example">예: 잔고 <strong>1,000,000원</strong>에서 <strong>700,000원씩 두 건</strong>을 요청하면 한 건만 성공하고 잔고는 <strong>300,000원</strong>이 남아야 해요.</p>
           <form onSubmit={submitBatch} noValidate className="banking-batch-form">
             <label className="field">요청당 출금 금액<input aria-label="요청당 출금 금액" value={batchAmount} inputMode="numeric" onChange={event => { setBatchAmount(event.target.value); setBatchError(''); }} aria-invalid={!!batchError} aria-describedby={batchError ? 'batch-amount-error' : undefined} /></label>
-            <Button type="submit" variant="secondary">출금 2건 함께 요청</Button>
+            <Button type="submit" variant="secondary" disabled={busy}>{busy ? '요청 중...' : '출금 2건 함께 요청'}</Button>
           </form>
           {batchError && <p id="batch-amount-error" className="field-error" role="alert">{batchError}</p>}
-          <p className="helper-text">선택 계좌에 실제로 목 출금이 반영돼요. 성공한 요청만 잔고와 입출금 내역에 남습니다.</p>
+          <p className="helper-text">선택 계좌에 출금 요청을 두 번 보냅니다. 성공한 요청만 잔고와 입출금 내역에 남습니다.</p>
           {!!batchReceipts.length && <div className="banking-batch-result" role="status">
             <div className="banking-result-heading"><strong>요청 결과</strong><span>성공 {batchReceipts.filter(item => item.status === 'success').length}건 · 거절 {batchReceipts.filter(item => item.status === 'rejected').length}건</span></div>
             {batchReceipts.map((item, index) => <div className="banking-request-row" key={item.requestId}>
@@ -168,12 +191,12 @@ export default function Accounts() {
           <dl className="detail-list"><div><dt>소유자</dt><dd>김틱 · 예시 사용자</dd></div><div><dt>초기 잔고</dt><dd>0원</dd></div><div><dt>계좌 용도</dt><dd>모의 자금 입출금</dd></div></dl>
           <Notice>초기 자금은 개설 후 직접 입금할 수 있어요. 기존 주식 거래 예시 계좌에는 영향을 주지 않아요.</Notice>
         </div>
-        <div className="modal-footer"><Button type="button" onClick={() => setModal(null)}>돌아가기</Button><Button type="submit" variant="primary">계좌 개설 확인</Button></div>
+        <div className="modal-footer"><Button type="button" onClick={() => setModal(null)}>돌아가기</Button><Button type="submit" variant="primary" disabled={busy}>{busy ? '개설 중...' : '계좌 개설 확인'}</Button></div>
       </form>
     </Modal>}
     {modal === 'confirm' && draft && draftAccount && <Modal title={`${kindLabel(draft.kind)} 내용을 확인해 주세요`} description={draftAccount.name + ' · ' + draftAccount.number} onClose={() => setModal(null)}>
       <div className="modal-body"><dl className="detail-list"><div><dt>현재 잔고</dt><dd>{money(draftAccount.balance)}원</dd></div><div><dt>{kindLabel(draft.kind)} 금액</dt><dd>{money(draft.amount)}원</dd></div><div className="total-line"><dt>예상 처리 후 잔고</dt><dd>{money(draftAccount.balance + (draft.kind === 'deposit' ? draft.amount : -draft.amount))}원</dd></div></dl><Notice>모의 자금의 {kindLabel(draft.kind)}이며 실제 은행 거래가 발생하지 않아요.</Notice></div>
-      <div className="modal-footer"><Button onClick={() => setModal(null)}>돌아가기</Button><Button variant="primary" onClick={confirmTransfer}>{kindLabel(draft.kind)} 확인</Button></div>
+      <div className="modal-footer"><Button onClick={() => setModal(null)}>돌아가기</Button><Button variant="primary" onClick={confirmTransfer} disabled={busy}>{busy ? '처리 중...' : `${kindLabel(draft.kind)} 확인`}</Button></div>
     </Modal>}
     {modal === 'result' && receipt && <Modal title={receipt.message} description={receipt.status === 'success' ? '잔고와 입출금 내역에 함께 반영했어요.' : '잔고와 입출금 내역은 변경되지 않았어요.'} onClose={() => setModal(null)}>
       <div className="modal-body"><div className={`banking-complete-icon ${receipt.status}`}>{receipt.status === 'success' ? <CheckCircle2 size={30} /> : <XCircle size={30} />}</div><dl className="detail-list"><div><dt>요청 금액</dt><dd>{kindLabel(receipt.kind)} {money(receipt.amount)}원</dd></div><div><dt>처리 시각</dt><dd>{formatDate(receipt.occurredAt)}</dd></div><div className="total-line"><dt>처리 후 잔고</dt><dd>{money(receipt.balanceAfter ?? 0)}원</dd></div></dl></div>
