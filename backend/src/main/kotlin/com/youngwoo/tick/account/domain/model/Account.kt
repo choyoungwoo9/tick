@@ -4,11 +4,11 @@ import com.youngwoo.tick.TickException
 import java.math.BigInteger
 import java.time.LocalDateTime
 
-class Account(private val ownerId: Long) {
+class Account(val ownerId: Long) {
     var id: Long = 0
     var balance: BigInteger = BigInteger.ZERO
         private set
-    private val _transactions: MutableList<AccountTransaction> = mutableListOf()
+    private var _transactions: MutableList<AccountTransaction> = mutableListOf()
 
     val transactions: List<AccountTransaction>
         get() = _transactions.toMutableList()
@@ -38,5 +38,20 @@ class Account(private val ownerId: Long) {
                 amount,
                 LocalDateTime.now()
             ))
+    }
+
+    companion object {
+        fun restore(
+            id: Long,
+            ownerId: Long,
+            balance: BigInteger,
+            transactions: MutableList<AccountTransaction>
+        ): Account {
+            val account = Account(ownerId)
+            account.id = id
+            account.balance = balance
+            account._transactions = transactions
+            return account
+        }
     }
 }
