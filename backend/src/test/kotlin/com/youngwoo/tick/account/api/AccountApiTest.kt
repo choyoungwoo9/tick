@@ -1,10 +1,12 @@
 package com.youngwoo.tick.account.api
 
+import com.youngwoo.tick.TestDatabaseConfiguration
 import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestDatabaseConfiguration::class)
 @Transactional
 class AccountApiTest @Autowired constructor(
     private val mockMvc: MockMvc,
