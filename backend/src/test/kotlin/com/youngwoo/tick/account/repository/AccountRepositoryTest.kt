@@ -73,4 +73,30 @@ class AccountRepositoryTest @Autowired constructor(
         assertEquals(existingTransactionId, transactions.first().id)
         assertTrue(transactions.last().id!! > existingTransactionId)
     }
+
+    @Test
+    fun `소유자의 계좌 목록만 ID 오름차순으로 조회한다`() {
+        val firstAccount = Account(ownerId, "첫 번째 계좌").apply {
+            assignAccountNumber("TICK 2000-0001")
+        }
+        val otherOwnersAccount = Account(ownerId + 1, "다른 소유자의 계좌").apply {
+            assignAccountNumber("TICK 2000-0002")
+        }
+        val secondAccount = Account(ownerId, "두 번째 계좌").apply {
+            assignAccountNumber("TICK 2000-0003")
+        }
+
+        val savedFirstAccount = accountRepository.save(firstAccount)
+        val savedOtherOwnersAccount = accountRepository.save(otherOwnersAccount)
+        val savedSecondAccount = accountRepository.save(secondAccount)
+        entityManager.flush()
+
+        val actual = accountRepository.findAllByOwnerId(ownerId)
+
+        assertTrue(savedFirstAccount.id < savedOtherOwnersAccount.id)
+        assertTrue(savedOtherOwnersAccount.id < savedSecondAccount.id)
+        assertEquals(listOf(savedFirstAccount.id, savedSecondAccount.id), actual.map { it.id })
+        assertEquals(listOf(ownerId, ownerId), actual.map { it.ownerId })
+        assertEquals(listOf("첫 번째 계좌", "두 번째 계좌"), actual.map { it.name })
+    }
 }
